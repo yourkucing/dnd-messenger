@@ -1,0 +1,46 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.phone-body {
+    height: 932px;
+    width: 430px;
+    background-color: black;
+    border-radius: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.phone-frame {
+    height: 95%;
+    width: 90%;
+    background-color: white;
+    border-radius: 50px;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 15px 20px;
+    box-sizing: border-box;
+}
+
+.right-header {
+    display: flex;
+    justify-content: center;
+}
+
+.messenger {
+    background-color: blue;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
