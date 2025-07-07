@@ -1,8 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-const AuthContext = createContext({
+interface AuthContextType {
+  isAuthenticated: boolean;
+  login: (user: any) => void;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
-  login: (user: any) => {},
+  login: (_user: any) => {},
   logout: () => {},
 });
 

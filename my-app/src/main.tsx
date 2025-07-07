@@ -6,7 +6,7 @@ import App from './App.tsx';
 import Login from './Login';
 import { AuthProvider, useAuth } from './AuthProvider';
 
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
