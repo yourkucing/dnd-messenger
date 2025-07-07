@@ -177,6 +177,12 @@ function App() {
                 />
                 Toggle Chat Access
             </label>
+            <form 
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        sendBroadcast();
+                    }}
+                    >
             <label className="broadcast-message">
                 Broadcast Message:
                 <input 
@@ -184,14 +190,12 @@ function App() {
                   placeholder="Type announcement"
                   value={broadcastMsg}
                   onChange={(e) => setBroadcastMsg(e.target.value)}
-                  disabled={chatAccessDisabled}
                 />
                 <button 
-                  onClick={sendBroadcast}
-                  disabled={chatAccessDisabled}
                 >
                   SEND</button>
             </label>
+            </form>
         </div>
       )}
       <div className="phone-body">

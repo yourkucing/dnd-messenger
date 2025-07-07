@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from './supabaseClient';
 import { useAuth } from './AuthProvider';
 
+interface User {
+  id: string;
+  needs_password_change?: boolean;
+}
+
 function Login() {
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -15,7 +20,7 @@ function Login() {
     const [forceChangePassword, setForceChangePassword] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [wrongPasswordPopup, setWrongPasswordPopup] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [showPassword, setShowPassword] = useState(false);
 
 
