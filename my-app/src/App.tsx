@@ -28,6 +28,8 @@ function App() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const groupedMessages = groupMessagesByDate(messages);
+  const userIdRef = useRef<string | null>(null);
+
 
   useEffect(() => {
     function updateTime() {
@@ -83,6 +85,7 @@ function App() {
     if (user?.id) {
       setUserId(user.id);
       setUserRole(user.role);
+      userIdRef.current = user.id;
     }
   }, []);
 
@@ -126,7 +129,7 @@ function App() {
               name: newMsg.name,
               time: newMsg.inserted_at?.slice(11, 16),
               date: newMsg.inserted_at?.slice(0, 10),
-              type: newMsg.is_broadcast ? 'broadcast' : (newMsg.sender_id === userId ? 'sent' : 'received'),
+              type: newMsg.is_broadcast ? 'broadcast' : (newMsg.sender_id === userIdRef.current ? 'sent' : 'received'),
             }
           ]);
         }
@@ -140,7 +143,7 @@ function App() {
 
   const sendMessage = async () => {
     const text = userInput.trim();
-    if (!text || !userId) return;
+    if (!text || !userId || chatAccessDisabled || userRole === 'read-only') return;
 
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
 
