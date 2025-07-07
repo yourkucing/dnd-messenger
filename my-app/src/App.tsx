@@ -133,7 +133,7 @@ function App() {
     const text = userInput.trim();
     if (!text || !userId) return;
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
 
     await supabase.from('messages').insert([
       {

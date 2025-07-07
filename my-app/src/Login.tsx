@@ -5,7 +5,10 @@ import { useAuth } from './AuthProvider';
 
 interface User {
   id: string;
+  name?: string;
   needs_password_change?: boolean;
+  role?: string;
+  username?: string;
 }
 
 function Login() {
