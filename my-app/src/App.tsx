@@ -179,12 +179,18 @@ function App() {
     fetchChatAccessSetting();
 
     const settingsChannel = supabase
-      .channel('public:settings')
+      .channel('chat-access-channel')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'settings', filter: 'key=eq.chat_access_disabled' },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'settings',
+          filter: 'key=eq.chat_access_disabled',
+        },
         (payload) => {
-          setChatAccessDisabled(payload.new.value);
+          const newValue = payload.new.value;
+          setChatAccessDisabled(newValue);
         }
       )
       .subscribe();
