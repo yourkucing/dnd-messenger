@@ -97,9 +97,22 @@ function App() {
       userIdRef.current = user.id;
     }
 
-    if (user.profile_picture) {
-      setProfilePictureUrl(user.profile_picture);
-    }
+    (async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('profile_picture')
+        .eq('id', user.id)
+        .single();
+
+      if (data?.profile_picture) {
+        setProfilePictureUrl(data.profile_picture);
+
+        sessionStorage.setItem(
+          'user',
+          JSON.stringify({ ...user, profile_picture: data.profile_picture })
+        );
+      }
+    })();
   }, []);
 
   useEffect(() => {
