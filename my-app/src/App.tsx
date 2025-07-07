@@ -47,8 +47,17 @@ function App() {
     }
   }, [messages]);
 
-  const handleToggleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setChatAccessDisabled(e.target.checked);
+  const handleToggleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.checked;
+
+    const { error } = await supabase
+      .from('settings')
+      .update({ value: newValue })
+      .eq('key', 'chat_access_disabled');
+
+    if (error) {
+      alert("Failed to update chat access setting.");
+    }
   };
 
   const sendBroadcast = async () => {
@@ -153,6 +162,38 @@ function App() {
     setUserRole(null);
     window.location.reload();
   };
+
+  useEffect(() => {
+    const fetchChatAccessSetting = async () => {
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'chat_access_disabled')
+        .single();
+
+      if (!error && data) {
+        setChatAccessDisabled(data.value);
+      }
+    };
+
+    fetchChatAccessSetting();
+
+    const settingsChannel = supabase
+      .channel('public:settings')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'settings', filter: 'key=eq.chat_access_disabled' },
+        (payload) => {
+          setChatAccessDisabled(payload.new.value);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(settingsChannel);
+    };
+  }, []);
+
 
   return (
     <>
