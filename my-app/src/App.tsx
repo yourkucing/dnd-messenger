@@ -7,6 +7,7 @@ type ChatMessage = {
   time?: string;
   date?: string;
   name?: string;
+  sender_id?: string;
 }
 
 function groupMessagesByDate(messages: ChatMessage[]) {
@@ -36,6 +37,7 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [userProfiles, setUserProfiles] = useState<Record<string, string>>({});
 
 
   useEffect(() => {
@@ -103,24 +105,44 @@ function App() {
   useEffect(() => {
     if (!userId) return;
 
-    const fetchMessages = async () => {
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .order('inserted_at', { ascending: true });
+    const fetchMessagesAndProfiles = async () => {
+    const { data: messagesData } = await supabase
+      .from('messages')
+      .select('*')
+      .order('inserted_at', { ascending: true });
 
-      if (data) {
-        setMessages(data.map(msg => ({
-          text: msg.text,
-          name: msg.name,
-          time: msg.inserted_at?.slice(11, 16),
-          date: msg.inserted_at?.slice(0, 10),
-          type: msg.is_broadcast ? 'broadcast' : (msg.sender_id === userId ? 'sent' : 'received'),
-        })));
-      }
-    };
+    if (!messagesData) return;
 
-    fetchMessages();
+    setMessages(messagesData.map(msg => ({
+      text: msg.text,
+      name: msg.name,
+      time: msg.inserted_at?.slice(11, 16),
+      date: msg.inserted_at?.slice(0, 10),
+      type: msg.is_broadcast ? 'broadcast' : (msg.sender_id === userId ? 'sent' : 'received'),
+      sender_id: msg.sender_id,
+    })));
+
+    const senderIds = [...new Set(messagesData.map(m => m.sender_id))];
+
+    const { data: usersData, error } = await supabase
+      .from('users')
+      .select('id, profile_picture')
+      .in('id', senderIds);
+
+    if (error) {
+      console.error('Failed to fetch user profiles', error);
+      return;
+    }
+
+    const profilesMap: Record<string, string> = {};
+    usersData?.forEach(user => {
+      profilesMap[user.id] = user.profile_picture || "https://placehold.co/200x200";
+    });
+
+    setUserProfiles(profilesMap);
+  };
+
+  fetchMessagesAndProfiles();
 
     const messageSubscription = supabase
       .channel('public:messages')
@@ -367,7 +389,11 @@ function App() {
                       return (
                         <div className={`bubble ${msg.type}`} key={idx}>
                           <img 
-                            src={msg.type === 'sent' ? profilePictureUrl || "https://placehold.co/200x200" : "https://placehold.co/200x200"} 
+                            src={
+                              msg.type === 'sent'
+                                ? (profilePictureUrl || "https://placehold.co/200x200")
+                                : (msg.sender_id && userProfiles[msg.sender_id]) || "https://placehold.co/200x200"
+                            }
                             className="profile-bubbles" 
                           />
                           <div className="right-bubble">
