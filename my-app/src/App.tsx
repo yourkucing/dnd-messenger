@@ -19,6 +19,8 @@ function groupMessagesByDate(messages: ChatMessage[]) {
 }
 
 function App() {
+  const MAX_CHAR_LIMIT = 300;
+
   const [time, setTime] = useState("");
   const [chatAccessDisabled, setChatAccessDisabled] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
@@ -27,8 +29,13 @@ function App() {
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [settingsPopup, setSettingsPopup] = useState(false);
   const groupedMessages = groupMessagesByDate(messages);
   const userIdRef = useRef<string | null>(null);
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -86,6 +93,10 @@ function App() {
       setUserId(user.id);
       setUserRole(user.role);
       userIdRef.current = user.id;
+    }
+
+    if (user.profile_picture) {
+      setProfilePictureUrl(user.profile_picture);
     }
   }, []);
 
@@ -166,6 +177,10 @@ function App() {
     window.location.reload();
   };
 
+  const openSettings = async () => {
+    setSettingsPopup(true);
+  };
+
   useEffect(() => {
     const fetchChatAccessSetting = async () => {
       const { data, error } = await supabase
@@ -203,6 +218,59 @@ function App() {
     };
   }, []);
 
+  const handleProfilePicChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleSaveProfilePicture = async () => {
+    if (!selectedFile || !userId) return;
+
+    const fileExt = selectedFile.name.split('.').pop();
+    const filePath = `${userId}/profile.${fileExt}`;
+
+    await supabase.storage.from('profile-pictures').remove([filePath]);
+
+    const { error: uploadError } = await supabase.storage
+      .from('profile-pictures')
+      .upload(filePath, selectedFile);
+
+    if (uploadError) {
+      console.error("Upload failed:", uploadError);
+      alert("Failed to upload image.");
+      return;
+    }
+
+    const { data } = supabase.storage
+      .from('profile-pictures')
+      .getPublicUrl(filePath);
+
+    const publicUrl = data?.publicUrl;
+
+    if (publicUrl) {
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({ profile_picture: publicUrl })
+        .eq('id', userId);
+
+      if (dbError) {
+        console.error("Failed to update profile picture in DB:", dbError);
+        return;
+      }
+
+      setProfilePictureUrl(publicUrl);
+      setSelectedFile(null);
+      setPreviewUrl(null);
+
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+      sessionStorage.setItem('user', JSON.stringify({ ...user, profile_picture: publicUrl }));
+
+      alert("Profile picture updated!");
+    }
+  };
 
   return (
     <>
@@ -214,6 +282,14 @@ function App() {
         className="logout-button"
       >
         <i className="material-icons">logout</i>
+      </button>
+      <button 
+        onClick={openSettings} 
+        title="Settings"
+        aria-label="Settings"
+        className="settings-button"
+      >
+        <i className="material-icons">settings</i>
       </button>
       {(userRole === 'admin' || userRole === 'dm') && (
         <div className="dm-controls">
@@ -270,9 +346,9 @@ function App() {
                       <span className="spacer"></span>
                       <i className="material-icons header-options">more_vert</i>
                   </div>
-                  <div className="messenger-content">
+                  <div className="messenger-content" ref={chatBoxRef}>
                     {Object.entries(groupedMessages).map(([date, msgs]) => (
-                      <div className="messenger-content2" key={date} ref={chatBoxRef}>
+                      <div className="messenger-content2" key={date}>
                         <div className="date-separator">
                           {new Date(date).toLocaleDateString(undefined, {
                             year: 'numeric',
@@ -290,7 +366,10 @@ function App() {
                       }
                       return (
                         <div className={`bubble ${msg.type}`} key={idx}>
-                          <img src="https://placehold.co/200x200" className="profile-bubbles" />
+                          <img 
+                            src={msg.type === 'sent' ? profilePictureUrl || "https://placehold.co/200x200" : "https://placehold.co/200x200"} 
+                            className="profile-bubbles" 
+                          />
                           <div className="right-bubble">
                             <span className="name">{msg.type === 'sent' ? 'You' : msg.name}</span>
                             <span className="bubble-text">{msg.text}</span>
@@ -306,7 +385,21 @@ function App() {
                       <div className="textarea-wrapper">
                           <textarea
                             value={userInput}
-                            onChange={(e) => setUserInput(e.target.value)}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value.length <= MAX_CHAR_LIMIT) {
+                                setUserInput(value);
+                              } else if (value.length === MAX_CHAR_LIMIT + 1) {
+                                alert(`Maximum character limit of ${MAX_CHAR_LIMIT} reached.`);
+                              }
+                            }}
+                            onPaste={(e) => {
+                              const pasted = e.clipboardData.getData('text');
+                              if ((userInput.length + pasted.length) > MAX_CHAR_LIMIT) {
+                                e.preventDefault();
+                                alert(`Pasting this would exceed the ${MAX_CHAR_LIMIT}-character limit.`);
+                              }
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
@@ -329,6 +422,32 @@ function App() {
               </div>
           </div>
       </div>
+      {settingsPopup && (
+      <>
+          <div className="change-password-overlay" onClick={() => setSettingsPopup(false)} />
+          <div className="change-password-popup">
+              <h3>Settings</h3>
+              <div className="profile-picture-section">
+                <p>Change profile picture:</p>
+                <img
+                  src={previewUrl || profilePictureUrl || "https://placehold.co/100x100"}
+                  alt="Profile Preview"
+                  style={{ width: "100px", height: "100px", borderRadius: "50%" }}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePicChange}
+                />
+              </div>
+
+              <div className="settings-buttons">
+                <button onClick={handleSaveProfilePicture} disabled={!selectedFile}>Save</button>
+                <button onClick={() => {setSettingsPopup(false); setPreviewUrl(null);}}>Close</button>
+              </div>
+          </div>
+      </>
+      )}
     </div>
     </>
   )
